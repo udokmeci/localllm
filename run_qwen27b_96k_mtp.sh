@@ -106,8 +106,8 @@ echo "╠═══════════════════════�
 echo "║  Quant              Size    Fits?  MTP  Quality      ║"
 echo "╠══════════════════════════════════════════════════════╣"
 
-BEST_QUANT=""
-BEST_MTP=0
+BEST_QUANT="UD-Q4_K_XL"
+BEST_MTP=1
 
 for entry in "${QUANTS[@]}"; do
     IFS=':' read -r tag size mtp <<< "$entry"
@@ -164,9 +164,9 @@ fi
 # -MTP.gguf has embedded draft heads; requires upstream llama.cpp (not turboquant)
 if [ "$BEST_MTP" = "1" ] && [ -f "$MODEL_DIR/Qwen3.6-27B-${BEST_QUANT}-MTP.gguf" ]; then
     MODEL_FILE="$MODEL_DIR/Qwen3.6-27B-${BEST_QUANT}-MTP.gguf"
-    MTP_ARGS="--draft-max 4"
+    MTP_ARGS="--spec-draft-n-max 4"
     SERVER_BIN="$SERVER_BIN_MTP"
-    echo "==> MTP model detected: ${BEST_QUANT}-MTP.gguf  (--draft-max 4, upstream binary)"
+    echo "==> MTP model detected: ${BEST_QUANT}-MTP.gguf  (--spec-draft-n-max 4, upstream binary)"
 else
     MODEL_FILE="$MODEL_DIR/Qwen3.6-27B-${BEST_QUANT}.gguf"
     MTP_ARGS=""
@@ -205,7 +205,7 @@ echo "==> Starting llama-server"
 echo "    Model  : $MODEL_FILE"
 echo "    Context: ${CTX_SIZE} tokens"
 echo "    KV     : ${CACHE_TYPE_K}"
-echo "    MTP    : $([ -n "$MTP_ARGS" ] && echo "enabled (--draft-max 4)" || echo disabled)"
+echo "    MTP    : $([ -n "$MTP_ARGS" ] && echo "enabled (--spec-draft-n-max 4)" || echo disabled)"
 echo "    Port   : $PORT"
 echo ""
 
