@@ -164,7 +164,7 @@ fi
 # -MTP.gguf has embedded draft heads; requires upstream llama.cpp (not turboquant)
 if [ "$BEST_MTP" = "1" ] && [ -f "$MODEL_DIR/Qwen3.6-27B-${BEST_QUANT}-MTP.gguf" ]; then
     MODEL_FILE="$MODEL_DIR/Qwen3.6-27B-${BEST_QUANT}-MTP.gguf"
-    MTP_ARGS="--spec-draft-n-max 4"
+    MTP_ARGS="--spec-type draft-mtp --spec-draft-n-max 4"
     SERVER_BIN="$SERVER_BIN_MTP"
     echo "==> MTP model detected: ${BEST_QUANT}-MTP.gguf  (--spec-draft-n-max 4, upstream binary)"
 else
@@ -200,12 +200,13 @@ fi
 ulimit -l unlimited 2>/dev/null || true
 export GGML_VK_DISABLE_VALIDATION=1
 export AMD_VULKAN_ICD=RADV
+export GGML_VK_DEVICE=0          # pin to R9700 (Vulkan0), not iGPU (Vulkan1)
 
 echo "==> Starting llama-server"
 echo "    Model  : $MODEL_FILE"
 echo "    Context: ${CTX_SIZE} tokens"
 echo "    KV     : ${CACHE_TYPE_K}"
-echo "    MTP    : $([ -n "$MTP_ARGS" ] && echo "enabled (--spec-draft-n-max 4)" || echo disabled)"
+echo "    MTP    : $([ -n "$MTP_ARGS" ] && echo "enabled (draft-mtp, max 4 tokens)" || echo disabled)"
 echo "    Port   : $PORT"
 echo ""
 
@@ -229,6 +230,7 @@ exec "$SERVER_BIN" \
     --timeout      "$TIMEOUT" \
     --cont-batching \
     --metrics      \
+    --kv-unified   \
     --reasoning-budget -1 \
     $MTP_ARGS \
     --chat-template-kwargs '{"preserve_thinking": true}'
