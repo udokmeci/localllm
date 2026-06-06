@@ -6,7 +6,10 @@
 export LC_NUMERIC=C
 
 MODEL_DIR="/home/ugur/localllm"
+# turboquant fork: faster TurboQuant kernels; no MTP model support
 SERVER_BIN="/home/ugur/localllm/llama-cpp-turboquant/build_vulkan/bin/llama-server"
+# upstream llama.cpp: required for -MTP.gguf models (draft heads)
+SERVER_BIN_MTP="/home/ugur/localllm/llama.cpp/build_vulkan/bin/llama-server"
 
 HOST="0.0.0.0"
 PORT=8085
@@ -157,11 +160,13 @@ if [ -z "$BEST_QUANT" ]; then
     exit 1
 fi
 
-# ── Model file selection (prefer -MTP variant when available) ─────────────────
+# ── Model file + binary selection ────────────────────────────────────────────
+# -MTP.gguf has embedded draft heads; requires upstream llama.cpp (not turboquant)
 if [ "$BEST_MTP" = "1" ] && [ -f "$MODEL_DIR/Qwen3.6-27B-${BEST_QUANT}-MTP.gguf" ]; then
     MODEL_FILE="$MODEL_DIR/Qwen3.6-27B-${BEST_QUANT}-MTP.gguf"
     MTP_ARGS="--draft-max 4"
-    echo "==> MTP model detected: ${BEST_QUANT}-MTP.gguf  (--draft-max 4)"
+    SERVER_BIN="$SERVER_BIN_MTP"
+    echo "==> MTP model detected: ${BEST_QUANT}-MTP.gguf  (--draft-max 4, upstream binary)"
 else
     MODEL_FILE="$MODEL_DIR/Qwen3.6-27B-${BEST_QUANT}.gguf"
     MTP_ARGS=""
@@ -182,7 +187,13 @@ fi
 
 if [ ! -f "$SERVER_BIN" ]; then
     echo "ERROR: llama-server not found at $SERVER_BIN"
-    echo "Build it: bash /home/ugur/localllm/build_rocm.sh"
+    if [ -n "$MTP_ARGS" ]; then
+        echo "MTP model requires upstream llama.cpp. Build it:"
+        echo "  git clone https://github.com/ggerganov/llama.cpp /home/ugur/localllm/llama.cpp"
+        echo "  bash /home/ugur/localllm/build_vulkan.sh"
+    else
+        echo "Build it: bash /home/ugur/localllm/build_rocm.sh"
+    fi
     exit 1
 fi
 
