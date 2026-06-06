@@ -1,0 +1,6 @@
+[submodule "llama-cpp-turboquant"]
+	path = llama-cpp-turboquant
+	url = https://github.com/TheTom/llama-cpp-turboquant.git
+[submodule "turboquant_plus"]
+	path = turboquant_plus
+	url = https://github.com/TheTom/turboquant_plus

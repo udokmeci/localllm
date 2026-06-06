@@ -1,0 +1,27 @@
+# ── Model files (large, not tracked) ─────────────────────────────────────────
+*.gguf
+*.ggml
+models/
+
+# ── Logs & output ─────────────────────────────────────────────────────────────
+*.log
+*.loh
+
+# ── Build artefacts ───────────────────────────────────────────────────────────
+build/
+build_vulkan/
+build_rocm/
+__pycache__/
+*.pyc
+*.o
+*.a
+*.so
+
+# ── Tool state (not project config) ──────────────────────────────────────────
+.serena/
+
+# ── OS / editor junk ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
