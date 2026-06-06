@@ -4,3 +4,6 @@
 [submodule "turboquant_plus"]
 	path = turboquant_plus
 	url = https://github.com/TheTom/turboquant_plus
+[submodule "llama.cpp"]
+	path = llama.cpp
+	url = https://github.com/ggerganov/llama.cpp
