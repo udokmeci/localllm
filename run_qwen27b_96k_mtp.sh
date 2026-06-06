@@ -13,7 +13,7 @@ SERVER_BIN_MTP="/home/ugur/localllm/llama.cpp/build_vulkan/bin/llama-server"
 
 HOST="0.0.0.0"
 PORT=8085
-CTX_SIZE=96000
+CTX_SIZE=220000
 N_GPU_LAYERS=9999
 THREADS=14
 BATCH_SIZE=2048
