@@ -1,5 +1,0 @@
-FROM gemma4:26b
-PARAMETER num_ctx 80000
-PARAMETER temperature 0.2
-PARAMETER top_p 0.9
-PARAMETER num_gpu 99

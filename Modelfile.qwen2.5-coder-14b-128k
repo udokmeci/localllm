@@ -1,4 +1,0 @@
-FROM qwen2.5-coder:14b
-PARAMETER num_ctx 128000
-PARAMETER num_gpu 99
-PARAMETER temperature 0.2

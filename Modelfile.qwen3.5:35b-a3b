@@ -1,6 +1,0 @@
-FROM qwen3.5:35b-a3b
-PARAMETER num_ctx 131072
-PARAMETER num_gpu 99
-PARAMETER temperature 0.2
-PARAMETER top_p 0.8
-PARAMETER top_k 20
