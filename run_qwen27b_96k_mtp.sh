@@ -1,14 +1,16 @@
 #!/bin/bash
-# Run llama-server with Qwen3.6-27B
+# Run llama-server with Qwen3.6-27B — 96k context, MTP preferred
+# Usage: bash run_qwen27b_96k_mtp.sh [QUANT_TAG]
+#   e.g. bash run_qwen27b_96k_mtp.sh UD-Q4_K_XL
+# Prefers <QUANT_TAG>-MTP.gguf; falls back to <QUANT_TAG>.gguf
 export LC_NUMERIC=C
-# Includes hardware estimation: auto-selects best quant that fits in VRAM
 
 MODEL_DIR="/home/ugur/localllm"
 SERVER_BIN="/home/ugur/localllm/llama-cpp-turboquant/build_vulkan/bin/llama-server"
 
 HOST="0.0.0.0"
 PORT=8085
-CTX_SIZE=80000
+CTX_SIZE=96000
 N_GPU_LAYERS=9999
 THREADS=14
 BATCH_SIZE=2048
@@ -89,7 +91,7 @@ KV_GB=$(kv_cache_gb $CTX_SIZE)
 BUDGET=$(echo "scale=1; $VRAM_FREE - $KV_GB - $OVERHEAD_GB" | bc)
 
 echo "╔══════════════════════════════════════════════════════╗"
-echo "║         Qwen3.6-27B — Hardware Estimation            ║"
+echo "║     Qwen3.6-27B — Hardware Estimation (96k MTP)     ║"
 echo "╠══════════════════════════════════════════════════════╣"
 printf "║  VRAM total     : %5.1f GB                           ║\n" "$VRAM_TOTAL"
 printf "║  VRAM used now  : %5.1f GB                           ║\n" "$VRAM_USED"
@@ -133,10 +135,10 @@ fi
 echo "╚══════════════════════════════════════════════════════╝"
 echo ""
 
-# ── Override quant from argument: ./run_qwen27b_80k.sh Q4_K_M ───────────────
+# ── Override quant from argument ─────────────────────────────────────────────
 if [ -n "$1" ] && [ "$1" != "--dry-run" ]; then
     BEST_QUANT="$1"
-    # check MTP for override
+    # look up MTP flag for override
     for entry in "${QUANTS[@]}"; do
         IFS=':' read -r tag size mtp <<< "$entry"
         [ "$tag" = "$BEST_QUANT" ] && BEST_MTP="$mtp" && break
@@ -173,7 +175,7 @@ if [ ! -f "$MODEL_FILE" ]; then
     echo "Download it with:"
     echo "  mkdir -p $MODEL_DIR"
     echo "  huggingface-cli download unsloth/Qwen3.6-27B-GGUF \\"
-    echo "    Qwen3.6-27B-${BEST_QUANT}.gguf \\"
+    echo "    Qwen3.6-27B-${BEST_QUANT}-MTP.gguf \\"
     echo "    --local-dir $MODEL_DIR"
     exit 1
 fi
@@ -192,7 +194,7 @@ echo "==> Starting llama-server"
 echo "    Model  : $MODEL_FILE"
 echo "    Context: ${CTX_SIZE} tokens"
 echo "    KV     : ${CACHE_TYPE_K}"
-echo "    MTP    : $([ -n "$MTP_ARGS" ] && echo enabled || echo disabled)"
+echo "    MTP    : $([ -n "$MTP_ARGS" ] && echo "enabled (--draft-max 4)" || echo disabled)"
 echo "    Port   : $PORT"
 echo ""
 
