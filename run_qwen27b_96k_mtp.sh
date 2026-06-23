@@ -13,14 +13,14 @@ SERVER_BIN_MTP="/home/ugur/localllm/llama.cpp/build_vulkan/bin/llama-server"
 
 HOST="0.0.0.0"
 PORT=8085
-CTX_SIZE=131072
+CTX_SIZE=258000
 N_GPU_LAYERS=9999
 THREADS=14
 BATCH_SIZE=1024
 UBATCH_SIZE=256
 PARALLEL=1
 CACHE_TYPE_K=q8_0
-CACHE_TYPE_V=q4_0
+CACHE_TYPE_V=q8_0
 TEMP=0.6
 TOP_P=0.9
 TOP_K=20
@@ -233,4 +233,5 @@ exec "$SERVER_BIN" \
     --kv-unified   \
     --reasoning-budget -1 \
     $MTP_ARGS \
-    --chat-template-kwargs '{"preserve_thinking": true}'
+    --chat-template-kwargs '{"preserve_thinking": true}' \
+    --cache-reuse 256 --cache-ram -1 --ctx-checkpoints 64
