@@ -9,7 +9,7 @@ Self-hosted llama.cpp inference server for **Qwen3.8-27B** with Multi-Token Pred
 | GPU | AMD Radeon AI Pro R9700 (32 GB VRAM, gfx1201) |
 | Driver | Vulkan via RADV (Mesa) |
 | Model | Qwen3.8-27B (UD-Q4_K_XL quant, ~16.4 GB) |
-| Context | 96k tokens, q8_0 KV cache |
+| Context | 258k tokens, q8_0 KV cache |
 | MTP | `--spec-type draft-mtp --spec-draft-n-max 4 --model-draft <file>` |
 
 ## Quick Start
@@ -32,8 +32,9 @@ bash run_qwen27b_mtp.sh --dry-run
 
 | Script | Context | Description |
 |--------|---------|-------------|
-| `run_qwen27b_mtp.sh` | 96k | MTP-first, auto-selects best quant fitting in VRAM |
+| `run_qwen27b_mtp.sh` | 258k | MTP-first, auto-selects best quant fitting in VRAM |
 | `run_qwen27b_80k.sh` | 80k | Legacy launcher, MTP auto-detection |
+| `run_server.sh` | 262k | Legacy Qwen3.6-35B-A3B launcher (kept for 3.6 testing) |
 | `build_vulkan.sh` | — | Builds upstream llama.cpp with Vulkan backend |
 | `build_rocm.sh` | — | Builds turboquant fork with ROCm backend |
 
@@ -69,11 +70,16 @@ export AMD_VULKAN_ICD=RADV       # Mesa Vulkan driver
 
 ## Systemd Service
 
-A user service is available for auto-start:
+The user service is tracked in this repo at `systemd/llama-server-qwen27b.service`.
 
+Install it:
+
+```bash
+install -Dm644 systemd/llama-server-qwen27b.service ~/.config/systemd/user/llama-server-qwen27b.service
+systemctl --user daemon-reload
 ```
-~/.config/systemd/user/llama-server-qwen27b.service
-```
+
+Manage it:
 
 ```bash
 systemctl --user enable --now llama-server-qwen27b

@@ -6,7 +6,7 @@
 # Environment variables and calculations
 GPU_VRAM_MB=32768  # Radeon AI Pro R9700 32GB
 CPU_THREADS=16     # Ryzen 7 7700
-MODEL_SIZE_MB=24397  # Q5_K file size in MB (23.85 GB * 1024)
+MODEL_SIZE_MB=24438  # Qwen3.6-35B-A3B-APEX-I-Balanced.gguf actual size in MB
 KV_CACHE_MB=3000   # Approx for 262144 ctx, turbo4 (larger for 32GB VRAM)
 OVERHEAD_MB=2000   # ROCm/Vulkan + runtime
 MODEL_LAYERS=40  # Total layers in model
@@ -19,8 +19,7 @@ ACTUAL_VRAM_USAGE_MB=$((OVERHEAD_MB + KV_CACHE_MB + (MODEL_SIZE_MB * N_GPU_LAYER
 MODEL_SIZE_GB_DISPLAY=$(echo "scale=2; $MODEL_SIZE_MB / 1024" | bc)
 
 echo "Hardware: GPU VRAM ${GPU_VRAM_MB}MB, CPU ${CPU_THREADS} threads"
-echo "Wanted VRAM utilization: ${WANTED_VRAM_UTILIZATION_PERCENT}% (${WANTED_VRAM_MB}MB)"
-echo "Calculated GPU layers: ${N_GPU_LAYERS}, CPU MoE experts: ${N_CPU_MOE} (based on wanted utilization)"
+echo "GPU layers: ${N_GPU_LAYERS}, CPU MoE experts: ${N_CPU_MOE}"
 echo "Model: ${MODEL_SIZE_GB_DISPLAY}GB Q5_K (${MODEL_LAYERS} layers)"
 echo "Projected VRAM: ${PROJECTED_VRAM_MB}MB (with offloading: ${ACTUAL_VRAM_USAGE_MB}MB used)"
 echo "Free VRAM: $((GPU_VRAM_MB - ACTUAL_VRAM_USAGE_MB))MB"
@@ -60,11 +59,6 @@ ulimit -l unlimited 2>/dev/null || echo "Warning: Could not set ulimit -l unlimi
 # Set environment for Vulkan backend (AMD R9700)
 export HSA_OVERRIDE_SKIP_EOF=1
 export ROCM_PATH=/opt/rocm
-
-echo "Starting Llama Server with ROCm/Vulkan..."
-echo "Model: $SELECTED_MODEL"
-echo "Config: ${N_GPU_LAYERS} GPU layers, ${N_CPU_MOE} CPU MoE experts, context ${CTX_SIZE}, ${CACHE_TYPE_K} KV cache"
-echo "Expected performance: ~50-80 tok/s generation (262K context, Vulkan backend)"
 
 echo "Starting Llama Server with Vulkan backend..."
 echo "Model: $SELECTED_MODEL"

@@ -1,0 +1,23 @@
+[Unit]
+Description=llama-server with Qwen3.8-27B UD-Q4_K_XL
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/ugur/localllm/run_qwen27b_mtp.sh
+WorkingDirectory=/home/ugur/localllm
+Restart=on-failure
+RestartSec=5
+
+# Environment for Vulkan backend
+Environment=LC_NUMERIC=C
+Environment=GGML_VK_DISABLE_VALIDATION=1
+Environment=AMD_VULKAN_ICD=RADV
+Environment=GGML_VK_DEVICE=0
+
+# Ensure model binary and weights exist before starting
+ExecStartPre=/usr/bin/test -f /home/ugur/localllm/llama.cpp/build_vulkan/bin/llama-server
+ExecStartPre=/usr/bin/test -f /home/ugur/localllm/models/Qwen3.8-27B-UD-Q4_K_XL.gguf
+
+[Install]
+WantedBy=default.target

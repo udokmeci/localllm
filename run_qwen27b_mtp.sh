@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run llama-server with Qwen3.8-27B — 96k context, MTP preferred
+# Run llama-server with Qwen3.8-27B — 258k context, MTP preferred
 # Usage: bash run_qwen27b_mtp.sh [QUANT_TAG]
 #   e.g. bash run_qwen27b_mtp.sh UD-Q4_K_XL
 # MTP draft head (mtp-Qwen3.8-27B-Q4_0.gguf) is a single file shared across
@@ -108,7 +108,7 @@ KV_GB=$(kv_cache_gb $CTX_SIZE)
 BUDGET=$(echo "scale=1; $VRAM_FREE - $KV_GB - $OVERHEAD_GB" | bc)
 
 echo "╔══════════════════════════════════════════════════════╗"
-echo "║     Qwen3.8-27B — Hardware Estimation (96k MTP)     ║"
+echo "║     Qwen3.8-27B — Hardware Estimation (258k MTP)    ║"
 echo "╠══════════════════════════════════════════════════════╣"
 printf "║  VRAM total     : %5.1f GB                           ║\n" "$VRAM_TOTAL"
 printf "║  VRAM used now  : %5.1f GB                           ║\n" "$VRAM_USED"

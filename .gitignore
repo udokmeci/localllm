@@ -21,9 +21,6 @@ __pycache__/
 .serena/
 .kilo/
 
-# ── System config (user-specific) ─────────────────────────────────────────────
-.config/systemd/user/llama-server-*.service
-
 # ── Ollama Modelfiles (obsolete, using llama-server) ──────────────────────────
 Modelfile*
 
