@@ -1,7 +1,10 @@
 #!/bin/bash
-# Run llama-server with Qwen3.8-27B
+# Run llama-server with Qwen3.8-27B — 96k context, MTP preferred
+# Usage: bash run_qwen27b_mtp.sh [QUANT_TAG]
+#   e.g. bash run_qwen27b_mtp.sh UD-Q4_K_XL
+# MTP draft head (mtp-Qwen3.8-27B-Q4_0.gguf) is a single file shared across
+# all main quants (unlike Qwen3.6's fused per-quant -MTP.gguf files).
 export LC_NUMERIC=C
-# Includes hardware estimation: auto-selects best quant that fits in VRAM
 
 MODEL_BASENAME="Qwen3.8-27B"
 # path is relative to MODEL_DIR; matches the MTP/ subfolder in the HF repo
@@ -10,25 +13,25 @@ MTP_DRAFT_FILE_NAME="MTP/mtp-Qwen3.8-27B-Q4_0.gguf"
 MODEL_DIR="/home/ugur/localllm/models"
 # turboquant fork: faster TurboQuant kernels; no MTP model support
 SERVER_BIN="/home/ugur/localllm/llama-cpp-turboquant/build_vulkan/bin/llama-server"
-# upstream llama.cpp: required for MTP draft-head models
+# upstream llama.cpp: required for -MTP.gguf models (draft heads)
 SERVER_BIN_MTP="/home/ugur/localllm/llama.cpp/build_vulkan/bin/llama-server"
 
 HOST="0.0.0.0"
 PORT=8085
-CTX_SIZE=80000
+CTX_SIZE=258000
 N_GPU_LAYERS=9999
 THREADS=14
-BATCH_SIZE=2048
-UBATCH_SIZE=512
+BATCH_SIZE=1024
+UBATCH_SIZE=256
 PARALLEL=1
-CACHE_TYPE_K="q8_0"
-CACHE_TYPE_V="q8_0"
+CACHE_TYPE_K=q8_0
+CACHE_TYPE_V=q8_0
 TEMP=0.6
 TOP_P=0.9
 TOP_K=20
 MIN_P=0.0
 TIMEOUT=600
-MTP_ARGS=""   # set below if a shared MTP draft head is found
+MTP_ARGS=""   # set below: prefers -MTP.gguf when available
 
 # ── Quant catalogue (name  size_gb) ─────────────────────────────────────────
 # Format: "QUANT_TAG:SIZE_GB"  sorted best→worst quality
@@ -105,7 +108,7 @@ KV_GB=$(kv_cache_gb $CTX_SIZE)
 BUDGET=$(echo "scale=1; $VRAM_FREE - $KV_GB - $OVERHEAD_GB" | bc)
 
 echo "╔══════════════════════════════════════════════════════╗"
-echo "║         Qwen3.8-27B — Hardware Estimation            ║"
+echo "║     Qwen3.8-27B — Hardware Estimation (96k MTP)     ║"
 echo "╠══════════════════════════════════════════════════════╣"
 printf "║  VRAM total     : %5.1f GB                           ║\n" "$VRAM_TOTAL"
 printf "║  VRAM used now  : %5.1f GB                           ║\n" "$VRAM_USED"
@@ -117,7 +120,7 @@ echo "╠═══════════════════════�
 echo "║  Quant              Size    Fits?  Quality            ║"
 echo "╠══════════════════════════════════════════════════════╣"
 
-BEST_QUANT=""
+BEST_QUANT="UD-Q4_K_XL"
 
 for entry in "${QUANTS[@]}"; do
     IFS=':' read -r tag size <<< "$entry"
@@ -147,7 +150,7 @@ fi
 echo "╚══════════════════════════════════════════════════════╝"
 echo ""
 
-# ── Override quant from argument: ./run_qwen27b_80k.sh Q4_K_M ───────────────
+# ── Override quant from argument ─────────────────────────────────────────────
 if [ -n "$1" ] && [ "$1" != "--dry-run" ]; then
     BEST_QUANT="$1"
     echo "==> Using user-specified quant: $BEST_QUANT"
@@ -207,12 +210,13 @@ fi
 ulimit -l unlimited 2>/dev/null || true
 export GGML_VK_DISABLE_VALIDATION=1
 export AMD_VULKAN_ICD=RADV
+export GGML_VK_DEVICE=0          # pin to R9700 (Vulkan0), not iGPU (Vulkan1)
 
 echo "==> Starting llama-server"
 echo "    Model  : $MODEL_FILE"
 echo "    Context: ${CTX_SIZE} tokens"
 echo "    KV     : ${CACHE_TYPE_K}"
-echo "    MTP    : $([ -n "$MTP_ARGS" ] && echo "enabled (--spec-draft-n-max 4)" || echo disabled)"
+echo "    MTP    : $([ -n "$MTP_ARGS" ] && echo "enabled (draft-mtp, max 4 tokens)" || echo disabled)"
 echo "    Port   : $PORT"
 echo ""
 
@@ -236,6 +240,8 @@ exec "$SERVER_BIN" \
     --timeout      "$TIMEOUT" \
     --cont-batching \
     --metrics      \
+    --kv-unified   \
     --reasoning-budget -1 \
     $MTP_ARGS \
-    --chat-template-kwargs '{"preserve_thinking": true}'
+    --chat-template-kwargs '{"preserve_thinking": true}' \
+    --cache-reuse 256 --cache-ram 32000 --ctx-checkpoints 24

@@ -1,6 +1,6 @@
-# Local LLM — Qwen3.6-27B on AMD Radeon AI Pro R9700
+# Local LLM — Qwen3.8-27B on AMD Radeon AI Pro R9700
 
-Self-hosted llama.cpp inference server for **Qwen3.6-27B** with Multi-Token Prediction (MTP), running on AMD Radeon AI Pro R9700 (RDNA 4) via Vulkan/RADV.
+Self-hosted llama.cpp inference server for **Qwen3.8-27B** with Multi-Token Prediction (MTP), running on AMD Radeon AI Pro R9700 (RDNA 4) via Vulkan/RADV.
 
 ## Hardware
 
@@ -8,9 +8,9 @@ Self-hosted llama.cpp inference server for **Qwen3.6-27B** with Multi-Token Pred
 |-----------|--------|
 | GPU | AMD Radeon AI Pro R9700 (32 GB VRAM, gfx1201) |
 | Driver | Vulkan via RADV (Mesa) |
-| Model | Qwen3.6-27B (UD-Q4_K_XL quant, ~17.9 GB) |
+| Model | Qwen3.8-27B (UD-Q4_K_XL quant, ~16.4 GB) |
 | Context | 96k tokens, q8_0 KV cache |
-| MTP | `--spec-type draft-mtp --spec-draft-n-max 4` |
+| MTP | `--spec-type draft-mtp --spec-draft-n-max 4 --model-draft <file>` |
 
 ## Quick Start
 
@@ -19,43 +19,43 @@ Self-hosted llama.cpp inference server for **Qwen3.6-27B** with Multi-Token Pred
 bash build_vulkan.sh
 
 # Run with auto-detected best quant and MTP
-bash run_qwen27b_96k_mtp.sh
+bash run_qwen27b_mtp.sh
 
 # Override quant
-bash run_qwen27b_96k_mtp.sh UD-Q5_K_XL
+bash run_qwen27b_mtp.sh UD-Q5_K_XL
 
 # Dry run (show VRAM estimation only)
-bash run_qwen27b_96k_mtp.sh --dry-run
+bash run_qwen27b_mtp.sh --dry-run
 ```
 
 ## Scripts
 
 | Script | Context | Description |
 |--------|---------|-------------|
-| `run_qwen27b_96k_mtp.sh` | 96k | MTP-first, auto-selects best quant fitting in VRAM |
+| `run_qwen27b_mtp.sh` | 96k | MTP-first, auto-selects best quant fitting in VRAM |
 | `run_qwen27b_80k.sh` | 80k | Legacy launcher, MTP auto-detection |
 | `build_vulkan.sh` | — | Builds upstream llama.cpp with Vulkan backend |
 | `build_rocm.sh` | — | Builds turboquant fork with ROCm backend |
 
 ## MTP (Multi-Token Prediction)
 
-MTP models (`*-MTP.gguf`) contain embedded draft heads for speculative decoding. Requires **upstream llama.cpp** (not turboquant fork).
+Unlike Qwen3.6, Qwen3.8's MTP draft head is **not fused into the main quant file** — it ships as a single file (`MTP/mtp-Qwen3.8-27B-Q4_0.gguf`) shared across every quant, and the main model gguf actually requires it: its metadata declares an extra "nextn" layer whose tensors only exist in that separate file, so loading the main model without pairing it fails with `missing tensor 'blk.64.ssm_conv1d.weight'`.
 
-The run scripts auto-detect `-MTP.gguf` files and switch to the upstream binary with `--spec-type draft-mtp --spec-draft-n-max 4`.
+The run scripts auto-detect `models/MTP/mtp-Qwen3.8-27B-Q4_0.gguf` and, if present, switch to the upstream binary and add `--spec-type draft-mtp --spec-draft-n-max 4 --model-draft <file>`.
 
-### Available MTP Quantizations
+### Available Quantizations
 
 | Quant | Size | Quality |
 |-------|------|---------|
-| UD-Q5_K_XL | 20.4 GB | Very high |
-| UD-Q4_K_XL | 17.9 GB | High (default) |
+| UD-Q5_K_XL | 19.4 GB | Very high |
+| UD-Q4_K_XL | 16.4 GB | High (default) |
 
-Download from [unsloth/Qwen3.6-27B-GGUF](https://huggingface.co/unsloth/Qwen3.6-27B-GGUF):
+Download from [unsloth/Qwen3.8-27B-GGUF](https://huggingface.co/unsloth/Qwen3.8-27B-GGUF):
 
 ```bash
-huggingface-cli download unsloth/Qwen3.6-27B-GGUF \
-  Qwen3.6-27B-UD-Q4_K_XL-MTP.gguf \
-  --local-dir /home/ugur/localllm
+hf download unsloth/Qwen3.8-27B-GGUF \
+  Qwen3.8-27B-UD-Q4_K_XL.gguf MTP/mtp-Qwen3.8-27B-Q4_0.gguf \
+  --local-dir /home/ugur/localllm/models
 ```
 
 ## Vulkan GPU Pinning
@@ -83,11 +83,11 @@ journalctl --user -u llama-server-qwen27b -f
 
 ## VRAM Budget
 
-The run scripts estimate available VRAM and auto-select the best quantization:
+The run scripts estimate available VRAM and auto-select the best quantization. Qwen3.8-27B is a hybrid linear-attention model: of its 64 layers, only every 4th (16 total) is full attention — the other 48 use a fixed-size linear/SSM recurrent state that does not grow with context, so KV cache scales far more gently than a dense model of the same size.
 
-- **Model weights** — varies by quant (9.6–35.8 GB)
-- **KV cache** — ~11 GB at 96k context (q8_0)
-- **Runtime overhead** — ~1.5 GB (Vulkan + activations)
+- **Model weights** — varies by quant (5.8–29.3 GB)
+- **KV cache** — ~7.9 GB at 258k context (q8_0), full-attention layers only
+- **Runtime overhead** — ~2.0 GB (Vulkan + activations + linear-attention state)
 
 ## Submodules
 
@@ -99,17 +99,23 @@ The run scripts estimate available VRAM and auto-select the best quantization:
 
 ## Kilo / OpenCode Integration
 
-Configure Kilo to point at the llama-server:
+Both `~/.config/kilo/kilo.jsonc` and `~/.config/opencode/opencode.json` point at the llama-server via an OpenAI-compatible provider:
 
 ```jsonc
-// ~/.config/kilo/kilo.jsonc
 {
-  "models": {
+  "model": "local-qwen/qwen3.8-27b-ud-q4k-xl-mtp",
+  "provider": {
     "local-qwen": {
-      "provider": "ollama",
-      "model": "qwen3.6-27b-ud-q4k-xl-mtp",
-      "contextLength": 96000,
-      "maxTokens": 32000
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Local Qwen (llama.cpp)",
+      "options": { "baseURL": "http://localhost:8085/v1" },
+      "models": {
+        "qwen3.8-27b-ud-q4k-xl-mtp": {
+          "name": "Qwen3.8 27B UD-Q4_K_XL MTP 96k (local)",
+          "tools": true,
+          "limit": { "context": 258000, "output": 20000 }
+        }
+      }
     }
   }
 }
@@ -117,32 +123,35 @@ Configure Kilo to point at the llama-server:
 
 ## Quantization Catalogue
 
-All available quantizations for Qwen3.6-27B (best → worst quality):
+All available quantizations for Qwen3.8-27B (best → worst quality), from `unsloth/Qwen3.8-27B-GGUF`:
 
-| Quant | Size (GB) | MTP | Quality |
-|-------|-----------|-----|---------|
-| UD-Q8_K_XL | 35.8 | — | Highest |
-| Q8_0 | 29.0 | — | Highest |
-| UD-Q6_K_XL | 26.0 | — | Highest |
-| Q6_K | 22.9 | — | Very high |
-| UD-Q5_K_XL | 20.4 | ✅ | Very high |
-| Q5_K_M | 19.8 | — | Very high |
-| Q5_K_S | 19.3 | — | High |
-| UD-Q4_K_XL | 17.9 | ✅ | High |
-| Q4_K_M | 17.1 | — | High |
-| Q4_1 | 17.5 | — | High |
-| IQ4_NL | 16.3 | — | High |
-| Q4_K_S | 16.1 | — | High |
-| Q4_0 | 16.1 | — | High |
-| IQ4_XS | 15.7 | — | Medium |
-| UD-Q3_K_XL | 14.8 | — | Medium |
-| Q3_K_M | 13.8 | — | Medium |
-| Q3_K_S | 12.6 | — | Medium |
-| UD-IQ3_XXS | 12.2 | — | Medium |
-| UD-Q2_K_XL | 12.0 | — | Low |
-| UD-IQ2_M | 11.0 | — | Low |
-| UD-IQ2_XXS | 9.57 | — | Low |
+| Quant | Size (GB) | Quality |
+|-------|-----------|---------|
+| UD-Q8_K_XL | 29.3 | Highest |
+| UD-Q8_K_L | 26.1 | Highest |
+| Q8_0 | 27.1 | Highest |
+| UD-Q6_K_XL | 23.6 | Very high |
+| UD-Q6_K_L | 22.5 | Very high |
+| UD-Q6_K_M | 21.5 | Very high |
+| UD-Q6_K | 20.5 | Very high |
+| UD-Q5_K_XL | 19.4 | Very high |
+| UD-Q5_K_M | 18.4 | Very high |
+| UD-Q5_K_S | 17.4 | High |
+| UD-Q4_K_XL | 16.4 | High |
+| Q4_1 | 16.3 | High |
+| UD-Q4_K_M | 15.3 | High |
+| Q4_0 | 15.0 | Medium |
+| UD-Q4_K_S | 14.3 | Medium |
+| UD-IQ4_XS | 13.3 | Medium |
+| UD-Q3_K_XL | 12.2 | Medium |
+| UD-IQ3_S | 11.2 | Low |
+| UD-IQ3_XXS | 10.2 | Low |
+| UD-Q2_K_XL | 9.2 | Low |
+| UD-IQ2_S | 7.8 | Low |
+| UD-IQ2_XXS | 6.8 | Low |
+| UD-IQ1_M | 6.3 | Low |
+| UD-IQ1_S | 5.8 | Low |
 
 ## License
 
-This repository contains configuration and scripts only. Model weights are licensed under their respective licenses (Qwen3.6 uses Qwen License). llama.cpp is MIT licensed.
+This repository contains configuration and scripts only. Model weights are licensed under their respective licenses (Qwen3.8 uses the Qwen License). llama.cpp is MIT licensed.

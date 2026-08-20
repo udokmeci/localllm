@@ -19,6 +19,7 @@ __pycache__/
 
 # ── Tool state (not project config) ──────────────────────────────────────────
 .serena/
+.kilo/
 
 # ── System config (user-specific) ─────────────────────────────────────────────
 .config/systemd/user/llama-server-*.service
