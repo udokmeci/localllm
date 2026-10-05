@@ -1,0 +1,25 @@
+[Unit]
+Description=llama-server router mode (multi-model, dynamic load/unload)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/ugur/localllm/llama-cpp-turboquant/build_vulkan/bin/llama-server \
+    --models-preset /home/ugur/localllm/models.ini \
+    --models-dir /home/ugur/localllm/models \
+    --models-max 1 \
+    --no-models-autoload \
+    --host 0.0.0.0 \
+    --port 8085
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGKILL
+
+# Environment for Vulkan backend
+Environment=LC_NUMERIC=C
+Environment=GGML_VK_DISABLE_VALIDATION=1
+Environment=AMD_VULKAN_ICD=RADV
+Environment=GGML_VK_DEVICE=0
+
+[Install]
+WantedBy=default.target

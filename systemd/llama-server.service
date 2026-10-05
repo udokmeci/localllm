@@ -1,0 +1,28 @@
+[Unit]
+Description=llama-server (active model: current_model.sh symlink)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/ugur/localllm/current_model.sh
+WorkingDirectory=/home/ugur/localllm
+Restart=on-failure
+RestartSec=5
+# llama-server does not shut down promptly on SIGTERM, which previously
+# caused stop/restart to time out, hit the abort drop-in, and register as a
+# failure — triggering an unwanted Restart=on-failure mid-switch. Kill
+# immediately instead; safe since this is a stateless inference server.
+KillSignal=SIGKILL
+
+# Environment for Vulkan backend
+Environment=LC_NUMERIC=C
+Environment=GGML_VK_DISABLE_VALIDATION=1
+Environment=AMD_VULKAN_ICD=RADV
+Environment=GGML_VK_DEVICE=0
+
+# current_model.sh is a symlink to whichever run_*.sh is active; switch it
+# with switch_model.sh instead of editing this unit.
+ExecStartPre=/usr/bin/test -x /home/ugur/localllm/current_model.sh
+
+[Install]
+WantedBy=default.target

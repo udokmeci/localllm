@@ -31,6 +31,11 @@ TOP_P=0.9
 TOP_K=20
 MIN_P=0.0
 TIMEOUT=600
+# Unlimited (-1) let a single turn spend minutes reasoning before writing an answer — a
+# 4-6k-token system prompt plus a self-review checklist reliably blew past a 90s client
+# timeout without ever emitting output. Capped instead of removed: some reasoning still
+# helps correctness, it just needs a ceiling.
+REASONING_BUDGET=2000
 MTP_ARGS=""   # set below: prefers -MTP.gguf when available
 
 # ── Quant catalogue (name  size_gb) ─────────────────────────────────────────
@@ -241,7 +246,7 @@ exec "$SERVER_BIN" \
     --cont-batching \
     --metrics      \
     --kv-unified   \
-    --reasoning-budget -1 \
+    --reasoning-budget "$REASONING_BUDGET" \
     $MTP_ARGS \
     --chat-template-kwargs '{"preserve_thinking": true}' \
     --cache-reuse 256 --cache-ram 32000 --ctx-checkpoints 24
